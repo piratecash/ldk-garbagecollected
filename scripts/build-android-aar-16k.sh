@@ -7,6 +7,10 @@ NDK_VERSION="r27c"
 NDK_ZIP="android-ndk-${NDK_VERSION}-linux.zip"
 NDK_SHA256="59c2f6dc96743b5daf5d1626684640b20a6bd2b1d85b13156b90333741bad5cc"
 RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-1.84.1}"
+PYTHON_STANDALONE_VERSION="${PYTHON_STANDALONE_VERSION:-3.11.9}"
+PYTHON_STANDALONE_RELEASE="${PYTHON_STANDALONE_RELEASE:-20240726}"
+PYTHON_STANDALONE_ARCHIVE="cpython-${PYTHON_STANDALONE_VERSION}+${PYTHON_STANDALONE_RELEASE}-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
+PYTHON_STANDALONE_URL="https://github.com/astral-sh/python-build-standalone/releases/download/${PYTHON_STANDALONE_RELEASE}/cpython-${PYTHON_STANDALONE_VERSION}%2B${PYTHON_STANDALONE_RELEASE}-x86_64-unknown-linux-gnu-install_only_stripped.tar.gz"
 
 cd "$ROOT_DIR"
 
@@ -26,6 +30,58 @@ ensure_rust() {
 	rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
 	rustup default "$RUST_TOOLCHAIN"
 	export RUSTUP_TOOLCHAIN="$RUST_TOOLCHAIN"
+}
+
+python_supports_fstrings() {
+	local candidate="$1"
+	"$candidate" - <<'PY' >/dev/null 2>&1
+compile('f"{1}"', '<python-check>', 'exec')
+PY
+}
+
+select_python() {
+	local candidate
+
+	if [ "${PYTHON:-}" != "" ] && command -v "$PYTHON" >/dev/null 2>&1 && python_supports_fstrings "$PYTHON"; then
+		export PYTHON
+		return 0
+	fi
+
+	for candidate in python3.12 python3.11 python3.10 python3.9 python3.8 python3.7 python3.6 python3; do
+		if command -v "$candidate" >/dev/null 2>&1 && python_supports_fstrings "$candidate"; then
+			export PYTHON="$candidate"
+			return 0
+		fi
+	done
+
+	return 1
+}
+
+ensure_python() {
+	local python_dir="$BUILD_DIR/python-standalone"
+
+	if select_python; then
+		"$PYTHON" --version
+		return
+	fi
+
+	if [ ! -x "$python_dir/bin/python3" ]; then
+		if [ ! -f "$BUILD_DIR/$PYTHON_STANDALONE_ARCHIVE" ]; then
+			curl -L "$PYTHON_STANDALONE_URL" -o "$BUILD_DIR/$PYTHON_STANDALONE_ARCHIVE"
+		fi
+
+		rm -rf "$python_dir"
+		mkdir -p "$python_dir"
+		tar xzf "$BUILD_DIR/$PYTHON_STANDALONE_ARCHIVE" -C "$python_dir" --strip-components=1
+	fi
+
+	export PYTHON="$python_dir/bin/python3"
+	if ! python_supports_fstrings "$PYTHON"; then
+		echo "Python 3.6+ is required for binding generation" >&2
+		exit 1
+	fi
+
+	"$PYTHON" --version
 }
 
 install_cbindgen() {
@@ -137,6 +193,7 @@ fetch_java_bins() {
 }
 
 mkdir -p "$BUILD_DIR"
+ensure_python
 ensure_rust
 install_cbindgen
 prepare_rust_sources
