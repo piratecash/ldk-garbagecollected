@@ -19,7 +19,7 @@ if [ "$3" != "java" -a "$3" != "c_sharp" ]; then
 	exit 1
 fi
 
-if [ "$3" = "java" -a [ ! -d "$4" -o ! -f "$4/AndroidManifest.xml" ] ]; then
+if [ "$3" = "java" ] && { [ "$4" = "" ] || [ ! -d "$4" ] || [ ! -f "$4/AndroidManifest.xml" ]; }; then
 	echo "Please set fourth argument to the path to ldk-java-bins/android-artifacts" > /dev/stderr
 	exit 1
 fi
@@ -30,6 +30,7 @@ set -x
 LDK_C_BINDINGS="$(realpath $2)"
 RUST_LIGHTNING="$(realpath $1)"
 pushd "$2"
+export CC="${HOST_CC:-clang}"
 export LDK_C_BINDINGS_EXTRA_TARGETS="x86_64-linux-android armv7-linux-androideabi aarch64-linux-android"
 export LDK_C_BINDINGS_EXTRA_TARGET_CCS="x86_64-linux-android24-clang armv7a-linux-androideabi24-clang aarch64-linux-android24-clang"
 ./genbindings.sh "$RUST_LIGHTNING" true
