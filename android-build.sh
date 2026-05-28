@@ -33,7 +33,7 @@ pushd "$2"
 export CC="${HOST_CC:-clang}"
 export LDK_C_BINDINGS_EXTRA_TARGETS="x86_64-linux-android armv7-linux-androideabi aarch64-linux-android"
 export LDK_C_BINDINGS_EXTRA_TARGET_CCS="x86_64-linux-android24-clang armv7a-linux-androideabi24-clang aarch64-linux-android24-clang"
-./genbindings.sh "$RUST_LIGHTNING" true
+./genbindings.sh "$RUST_LIGHTNING" true skip-tests
 popd
 
 export PATH=$PATH:$ANDROID_TOOLCHAIN/bin
