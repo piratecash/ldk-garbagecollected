@@ -11,6 +11,7 @@ version = System.getenv("JITPACK_VERSION")
 
 val ldkAar = layout.buildDirectory.file("outputs/aar/LDK-release.aar")
 val ldkBaseVersion = "v0.2.0.0"
+val androidToolchain = layout.projectDirectory.dir(".ldk-android-build/android-ndk-r27c/toolchains/llvm/prebuilt/linux-x86_64")
 
 val buildAndroidAar by tasks.registering(Exec::class) {
     inputs.files(
@@ -45,6 +46,7 @@ val buildAndroidAar by tasks.registering(Exec::class) {
 val verifyElfAlignment by tasks.registering(Exec::class) {
     dependsOn(buildAndroidAar)
     inputs.file(ldkAar)
+    environment("ANDROID_TOOLCHAIN", androidToolchain.asFile.absolutePath)
 
     commandLine(
         "bash",
