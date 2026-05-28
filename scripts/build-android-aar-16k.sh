@@ -6,6 +6,7 @@ BUILD_DIR="${LDK_ANDROID_BUILD_DIR:-$ROOT_DIR/.ldk-android-build}"
 NDK_VERSION="r27c"
 NDK_ZIP="android-ndk-${NDK_VERSION}-linux.zip"
 NDK_SHA256="59c2f6dc96743b5daf5d1626684640b20a6bd2b1d85b13156b90333741bad5cc"
+RUST_TOOLCHAIN="${RUST_TOOLCHAIN:-1.63.0}"
 
 cd "$ROOT_DIR"
 
@@ -16,13 +17,15 @@ if [ "${LDK_GARBAGECOLLECTED_GIT_OVERRIDE:0:1}" != "v" ]; then
 fi
 
 ensure_rust() {
-	if command -v cargo >/dev/null 2>&1; then
-		return
+	if ! command -v rustup >/dev/null 2>&1; then
+		curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain "$RUST_TOOLCHAIN"
+		# shellcheck disable=SC1091
+		. "$HOME/.cargo/env"
 	fi
 
-	curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-	# shellcheck disable=SC1091
-	. "$HOME/.cargo/env"
+	rustup toolchain install "$RUST_TOOLCHAIN" --profile minimal
+	rustup default "$RUST_TOOLCHAIN"
+	export RUSTUP_TOOLCHAIN="$RUST_TOOLCHAIN"
 }
 
 install_cbindgen() {
@@ -42,7 +45,7 @@ install_cbindgen() {
 
 prepare_rust_sources() {
 	if command -v rustup >/dev/null 2>&1; then
-		rustup component add rust-src || true
+		rustup component add rust-src --toolchain "$RUST_TOOLCHAIN" || true
 	fi
 
 	local sysroot
