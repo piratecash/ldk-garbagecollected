@@ -17,6 +17,8 @@ usage() {
 set -e
 set -x
 
+PYTHON="${PYTHON:-python3}"
+
 function is_gnu_sed(){
   sed --version >/dev/null 2>&1
 }
@@ -122,7 +124,7 @@ if [ "$2" = "c_sharp" ]; then
 	GEN_PLAT="c_sharp-linux"
 	[ "$IS_WIN" = "true" ] && GEN_PLAT="c_sharp-win"
 	[ "$IS_MAC" = "true" ] && GEN_PLAT="c_sharp-darwin"
-	./genbindings.py "./lightning.h" c_sharp/src/org/ldk/impl c_sharp/src/org/ldk c_sharp/ $DEBUG_ARG $GEN_PLAT $4 $TARGET_STRING
+	"$PYTHON" ./genbindings.py "./lightning.h" c_sharp/src/org/ldk/impl c_sharp/src/org/ldk c_sharp/ $DEBUG_ARG $GEN_PLAT $4 $TARGET_STRING
 	rm -f c_sharp/bindings.c
 	if [ "$3" = "true" ]; then
 		echo "#define LDK_DEBUG_BUILD" > c_sharp/bindings.c
@@ -202,7 +204,7 @@ elif [ "$2" = "python" ]; then
 	echo "Creating Python bindings..."
 	mkdir -p python/src/{enums,structs,impl}
 	rm -f python/src/{enums,structs,impl}/*.py
-	./genbindings.py "./lightning.h" python/src/impl python/src python/ $DEBUG_ARG python $4 $TARGET_STRING
+	"$PYTHON" ./genbindings.py "./lightning.h" python/src/impl python/src python/ $DEBUG_ARG python $4 $TARGET_STRING
 	rm -f python/bindings.c
 	if [ "$3" = "true" ]; then
 		echo "#define LDK_DEBUG_BUILD" > python/bindings.c
@@ -242,9 +244,9 @@ elif [ "$2" = "wasm" ]; then
 	mkdir -p ts/{enums,structs}
 	rm -f ts/{enums,structs,}/*.{mjs,mts,mts.part}
 	if [ "$4" = "false" ]; then
-		./genbindings.py "./lightning.h" ts ts ts $DEBUG_ARG typescript node wasm
+		"$PYTHON" ./genbindings.py "./lightning.h" ts ts ts $DEBUG_ARG typescript node wasm
 	else
-		./genbindings.py "./lightning.h" ts ts ts $DEBUG_ARG typescript browser wasm
+		"$PYTHON" ./genbindings.py "./lightning.h" ts ts ts $DEBUG_ARG typescript browser wasm
 	fi
 	rm -f ts/bindings.c
 	sed -i 's/^  "version": .*/  "version": "'${LDK_GARBAGECOLLECTED_GIT_OVERRIDE:1:100}'",/g' ts/package.json
@@ -310,9 +312,9 @@ elif [ "$2" = "java" ]; then
 	rm -f src/main/java/org/ldk/{enums,structs}/*.java
 	rm -f src/main/jni/*.h
 	if [ "$4" = "true" ]; then
-		./genbindings.py "./lightning.h" src/main/java/org/ldk/impl src/main/java/org/ldk src/main/jni/ $DEBUG_ARG android $4 $TARGET_STRING
+		"$PYTHON" ./genbindings.py "./lightning.h" src/main/java/org/ldk/impl src/main/java/org/ldk src/main/jni/ $DEBUG_ARG android $4 $TARGET_STRING
 	else
-		./genbindings.py "./lightning.h" src/main/java/org/ldk/impl src/main/java/org/ldk src/main/jni/ $DEBUG_ARG java $4 $TARGET_STRING
+		"$PYTHON" ./genbindings.py "./lightning.h" src/main/java/org/ldk/impl src/main/java/org/ldk src/main/jni/ $DEBUG_ARG java $4 $TARGET_STRING
 	fi
 	rm -f src/main/jni/bindings.c
 	if [ "$3" = "true" ]; then
