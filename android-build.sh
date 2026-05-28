@@ -29,10 +29,31 @@ set -x
 
 LDK_C_BINDINGS="$(realpath $2)"
 RUST_LIGHTNING="$(realpath $1)"
+LDK_ANDROID_TARGETS="${LDK_ANDROID_TARGETS:-aarch64-linux-android}"
+LDK_ANDROID_TARGET_CCS="${LDK_ANDROID_TARGET_CCS:-aarch64-linux-android24-clang}"
+LDK_ANDROID_TARGET_CPUS="${LDK_ANDROID_TARGET_CPUS:-generic}"
+
+android_abi_for_target() {
+	case "$1" in
+		"aarch64-linux-android")
+			echo "arm64-v8a"
+			;;
+		"armv7-linux-androideabi")
+			echo "armeabi-v7a"
+			;;
+		"x86_64-linux-android")
+			echo "x86_64"
+			;;
+		*)
+			echo "Unsupported Android target: $1" > /dev/stderr
+			exit 1
+	esac
+}
+
 pushd "$2"
 export CC="${HOST_CC:-clang}"
-export LDK_C_BINDINGS_EXTRA_TARGETS="x86_64-linux-android armv7-linux-androideabi aarch64-linux-android"
-export LDK_C_BINDINGS_EXTRA_TARGET_CCS="x86_64-linux-android24-clang armv7a-linux-androideabi24-clang aarch64-linux-android24-clang"
+export LDK_C_BINDINGS_EXTRA_TARGETS="$LDK_ANDROID_TARGETS"
+export LDK_C_BINDINGS_EXTRA_TARGET_CCS="$LDK_ANDROID_TARGET_CCS"
 ./genbindings.sh "$RUST_LIGHTNING" true skip-tests
 popd
 
@@ -45,7 +66,12 @@ rm -fr src/main/resources
 
 EXTRA_TARGETS=( $LDK_C_BINDINGS_EXTRA_TARGETS )
 EXTRA_TARGET_CCS=( $LDK_C_BINDINGS_EXTRA_TARGET_CCS )
-TARGET_CPUS=( "sandybridge" "generic" "generic" )
+TARGET_CPUS=( $LDK_ANDROID_TARGET_CPUS )
+if [ "${#EXTRA_TARGETS[@]}" -ne "${#EXTRA_TARGET_CCS[@]}" -o "${#EXTRA_TARGETS[@]}" -ne "${#TARGET_CPUS[@]}" ]; then
+	echo "Android target, compiler, and CPU lists must have the same length" > /dev/stderr
+	exit 1
+fi
+
 for IDX in ${!EXTRA_TARGETS[@]}; do
 	export CC="${EXTRA_TARGET_CCS[$IDX]}"
 	export LDK_TARGET="${EXTRA_TARGETS[$IDX]}"
@@ -68,11 +94,13 @@ ls ldk-java-classes.jar
 rm -rf aar
 mkdir aar
 cp -r "$4/"* ./aar/
-mkdir -p ./aar/jni/{armeabi-v7a,arm64-v8a,x86_64}
 
-cp liblightningjni_release_aarch64-linux-android.so ./aar/jni/arm64-v8a/liblightningjni.so
-cp liblightningjni_release_armv7-linux-androideabi.so ./aar/jni/armeabi-v7a/liblightningjni.so
-cp liblightningjni_release_x86_64-linux-android.so ./aar/jni/x86_64/liblightningjni.so
+mkdir -p ./aar/jni
+for TARGET in ${EXTRA_TARGETS[@]}; do
+	ABI_DIR="$(android_abi_for_target "$TARGET")"
+	mkdir -p "./aar/jni/$ABI_DIR"
+	cp "liblightningjni_release_${TARGET}.so" "./aar/jni/$ABI_DIR/liblightningjni.so"
+done
 cp ldk-java-classes.jar ./aar/classes.jar
 
 rm -f LDK-release.aar
