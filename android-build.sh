@@ -37,6 +37,7 @@ popd
 
 export PATH=$PATH:$ANDROID_TOOLCHAIN/bin
 export SYSROOT=$ANDROID_TOOLCHAIN/sysroot/
+ANDROID_JNI_LINKER_FLAGS="${ANDROID_JNI_LINKER_FLAGS:--Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384}"
 
 # Remove any non-Android libraries installed locally
 rm -fr src/main/resources
@@ -48,7 +49,7 @@ for IDX in ${!EXTRA_TARGETS[@]}; do
 	export CC="${EXTRA_TARGET_CCS[$IDX]}"
 	export LDK_TARGET="${EXTRA_TARGETS[$IDX]}"
 	export LDK_TARGET_CPU="${TARGET_CPUS[$IDX]}"
-	./genbindings.sh "$LDK_C_BINDINGS" "$3" false true "-lm -llog -I$SYSROOT/usr/include/"
+	./genbindings.sh "$LDK_C_BINDINGS" "$3" false true "-lm -llog -I$SYSROOT/usr/include/ $ANDROID_JNI_LINKER_FLAGS"
 	if [ "$3" = "java" ]; then
 		llvm-strip liblightningjni_release_${LDK_TARGET}.so
 	else
@@ -80,3 +81,7 @@ touch -d "2021-01-01 00:00 UTC" $(cat ../sources-zip-files.txt)
 cat ../sources-zip-files.txt | zip -X@ ../LDK-release.aar
 cd ..
 rm -r aar
+
+if [ -x ./scripts/check-android-aar-16k.sh ]; then
+	./scripts/check-android-aar-16k.sh LDK-release.aar
+fi
