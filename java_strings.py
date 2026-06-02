@@ -719,7 +719,9 @@ import javax.annotation.Nullable;
         return res
 
     def release_native_arr_ptr_call(self, ty_info, arr_var, arr_ptr_var):
-        if ty_info.subty is None or not ty_info.subty.c_ty.endswith("Array"):
+        # jstring (String) elements live in an object array, not a primitive one (see
+        # create_native_arr_call), so they must not go through the PrimitiveArrayCritical path.
+        if ty_info.subty is None or not (ty_info.subty.c_ty.endswith("Array") or ty_info.subty.c_ty == "jstring"):
             return "(*env)->ReleasePrimitiveArrayCritical(env, " + arr_var + ", " + arr_ptr_var + ", 0)"
         return None
     def create_native_arr_call(self, arr_len, ty_info):
@@ -759,11 +761,13 @@ import javax.annotation.Nullable;
         else:
             assert False # Only called if above is None
     def get_native_arr_ptr_call(self, ty_info):
-        if ty_info.subty is not None and ty_info.subty.c_ty.endswith("Array"):
+        # String arrays are object arrays (jobjectArray of jstring); GetPrimitiveArrayCritical is only
+        # valid for primitive arrays and aborts under CheckJNI. Use the SetObjectArrayElement path below.
+        if ty_info.subty is not None and (ty_info.subty.c_ty.endswith("Array") or ty_info.subty.c_ty == "jstring"):
             return None
         return ("(*env)->GetPrimitiveArrayCritical(env, ", ", NULL)")
     def get_native_arr_entry_call(self, ty_info, arr_name, idxc, entry_access):
-        if ty_info.subty is None or not ty_info.subty.c_ty.endswith("Array"):
+        if ty_info.subty is None or not (ty_info.subty.c_ty.endswith("Array") or ty_info.subty.c_ty == "jstring"):
             return None
         return "(*env)->SetObjectArrayElement(env, " + arr_name + ", " + idxc + ", " + entry_access + ")"
     def cleanup_native_arr_ref_contents(self, arr_name, dest_name, arr_len, ty_info):
