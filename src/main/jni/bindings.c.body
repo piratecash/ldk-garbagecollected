@@ -14324,13 +14324,11 @@ JNIEXPORT jobjectArray JNICALL Java_org_ldk_impl_bindings_CResult_1CVec_1StrZIOE
 	jobjectArray ret_arr = NULL;
 	ret_arr = (*env)->NewObjectArray(env, ret_var.datalen, String_clz, NULL);
 	;
-	jstring *ret_arr_ptr = (*env)->GetPrimitiveArrayCritical(env, ret_arr, NULL);
 	for (size_t i = 0; i < ret_var.datalen; i++) {
 		LDKStr ret_conv_8_str = ret_var.data[i];
 		jstring ret_conv_8_conv = str_ref_to_java(env, ret_conv_8_str.chars, ret_conv_8_str.len);
-		ret_arr_ptr[i] = ret_conv_8_conv;
+		(*env)->SetObjectArrayElement(env, ret_arr, i, ret_conv_8_conv);
 	}
-	(*env)->ReleasePrimitiveArrayCritical(env, ret_arr, ret_arr_ptr, 0);
 	return ret_arr;
 }
 
